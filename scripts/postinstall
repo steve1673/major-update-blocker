@@ -1,0 +1,24 @@
+#!/bin/bash
+# Runs as root after the pkg payload is installed.
+PLIST="/Library/LaunchAgents/org.majorupdateblocker.plist"
+SUPPORT="/Library/Application Support/MajorUpdateBlocker"
+DAEMON="/Library/LaunchDaemons/org.majorupdateblocker.daemon.plist"
+
+mkdir -p "$SUPPORT"
+chmod 777 "$SUPPORT"
+chown root:wheel "$PLIST"
+chmod 644 "$PLIST"
+chown root:wheel "$DAEMON"
+chmod 644 "$DAEMON"
+
+# Installer-blocking daemon (root). Reload so upgrades pick up the new binary.
+/bin/launchctl bootout system "$DAEMON" 2>/dev/null
+/bin/launchctl bootstrap system "$DAEMON" 2>/dev/null
+
+# Start the agent now for the logged-in user (it also starts at every login).
+UID_CONSOLE=$(/usr/bin/stat -f %u /dev/console)
+if [ -n "$UID_CONSOLE" ] && [ "$UID_CONSOLE" != "0" ]; then
+  /bin/launchctl bootout "gui/$UID_CONSOLE" "$PLIST" 2>/dev/null
+  /bin/launchctl bootstrap "gui/$UID_CONSOLE" "$PLIST" 2>/dev/null
+fi
+exit 0
